@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['irregular nodulation', 'irregular surface', 'irregular vascularity']
+
+roboflow:
+  workspace: qingyu
+  project: 1-frame-s
+  version: 22
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/qingyu/1-frame-s/dataset/22

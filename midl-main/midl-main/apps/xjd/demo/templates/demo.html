@@ -1,0 +1,149 @@
+{% extends 'layout.html' %}
+{% block title %}视频检测 Demo{% endblock %}
+{% block content %}
+<h2>胆道狭窄病变自动检测 Demo</h2>
+
+<div id="uploadProgress" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.7);color:white;padding:20px;border-radius:5px;text-align:center;">
+    <div id="progressText">准备上传...</div>
+    <div style="width: 300px; height: 20px; background: grey; border-radius: 10px; margin-top: 10px;">
+        <div id="progressBar" style="height: 100%; width: 0%; background: #4CAF50; border-radius: 10px;"></div>
+    </div>
+</div>
+
+<div id="videoContainer" style="width:100%;height:500px;border:2px dashed #ccc;background:url('/static/default.jpg') center/cover;position:relative;">
+    <img id="resultVideo" src="/static/default.jpg" alt="处理结果" style="width:100%;height:100%;object-fit:contain;">
+</div>
+
+<button class="button" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
+  选择并上传视频
+</button>
+<input type="file" id="fileInput" hidden accept="video/*">
+
+<div id="downloadSection" style="display:none;margin-top:20px;">
+  <a class="button" id="downloadLink">下载处理结果视频</a>
+</div>
+
+<!-- 图表展示区域 -->
+<div class="container" id="figsContainer" style="display:none;">
+  <h3>统计图表展示</h3>
+  <div id="figsGallery" style="display: flex; flex-direction: column; gap: 30px;"></div>
+</div>
+
+<script>
+const resultVideo = document.getElementById('resultVideo');
+const uploadProgress = document.getElementById('uploadProgress');
+const progressText = document.getElementById('progressText');
+const progressBar = document.getElementById('progressBar');
+const downloadSection = document.getElementById('downloadSection');
+const downloadLink = document.getElementById('downloadLink');
+const uploadBtn = document.getElementById("uploadBtn");
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    uploadProgress.style.display = 'block';
+    const formData = new FormData();
+    formData.append('video', file);
+
+    fetch('/upload', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      uploadProgress.style.display = 'none';
+      if (data.error) {
+        alert(data.error);
+        uploadBtn.style.display = 'inline-block'; // 出错后重新显示上传按钮
+        document.getElementById('fileInput').value = ''; // 清空上传框
+        return;
+      }
+      uploadBtn.style.display = 'none';
+      playProcessedFrames(data.frames);
+      showDownloadLink(data.video_url);
+      getAllFigs();
+      alert('处理完成！请查看结果～'); // 👈 处理完成提示
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      uploadProgress.style.display = 'none';
+      uploadBtn.style.display = 'inline-block'; // 出错后可以重新上传
+      document.getElementById('fileInput').value = '';
+      alert('处理视频时发生错误，请重新上传。');
+    });
+
+    updateProgress();  // 👈 一开始就启动轮询进度
+  }
+});
+
+function playProcessedFrames(frames) {
+  let currentFrame = 0;
+  const frameInterval = 100;
+  function showNextFrame() {
+    if (currentFrame < frames.length) {
+      resultVideo.src = `data:image/jpeg;base64,${frames[currentFrame]}`;
+      currentFrame++;
+      setTimeout(showNextFrame, frameInterval);
+    }
+  }
+  resultVideo.style.display = 'block';
+  showNextFrame();
+}
+
+function showDownloadLink(url) {
+  downloadSection.style.display = 'block';
+  downloadLink.href = url;
+}
+
+function getAllFigs() {
+  fetch('/getAllFigs', {
+    method: 'POST'
+  })
+  .then(response => response.json())
+  .then(data => {
+    const figsGallery = document.getElementById('figsGallery');
+    figsGallery.innerHTML = '';
+    if (data.fig_urls && data.fig_urls.length > 0) {
+      document.getElementById('figsContainer').style.display = 'block';
+      data.fig_urls.forEach((url, idx) => {
+        const figDiv = document.createElement('div');
+        figDiv.innerHTML = `
+          <img src="${url}" alt="图${idx + 1}" style="width:100%;border-radius:8px;border:1px solid #ccc;" />
+          <a href="${url}" download="fig${idx + 1}.jpg" class="button">下载图表 ${idx + 1}</a>
+        `;
+        figsGallery.appendChild(figDiv);
+      });
+    }
+  })
+  .catch(err => console.log('getAllFigs error', err));
+}
+
+// ✅ 进度条动态更新函数
+function updateProgress() {
+  const updateInterval = 500; // 每0.5秒刷新一次
+  const formData = new FormData();
+  formData.append('seq', 'check_progress');
+
+  fetch('/getProgress', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) return;
+
+    progressText.innerText = data.progress;
+
+    if (data.state === 'processing' && data.ratio !== undefined) {
+      progressBar.style.width = `${data.ratio}%`;
+      setTimeout(updateProgress, updateInterval);
+    } else if (data.state === 'finished') {
+      progressBar.style.width = `100%`;
+    }
+  })
+  .catch(error => {
+    console.log('getProgress error', error);
+  });
+}
+</script>
+{% endblock %}

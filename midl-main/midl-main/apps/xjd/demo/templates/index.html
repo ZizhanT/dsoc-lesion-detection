@@ -1,0 +1,20 @@
+{% extends 'layout.html' %}
+{% block title %}研究首页{% endblock %}
+
+{% block content %}
+<h2>研究项目简介</h2>
+
+<p>
+  欢迎来到我们开发的医学视频辅助诊断平台。本系统结合了 YOLOv11 与 ResNet18 的深度学习模型，
+  能够自动识别胆道狭窄病变并判断其良恶性，为医生提供可靠的辅助诊断依据。
+</p>
+
+<p>
+  平台通过视频上传实现自动检测与可视化分析，提供交互式结果预览和图表辅助解读。
+</p>
+
+<div style="margin-top: 30px;">
+  <a href="/demo" class="button">🔬 进入 Demo 演示</a>
+  <a href="/team" class="button" style="margin-left: 20px;">👥 查看团队</a>
+</div>
+{% endblock %}

@@ -1,0 +1,196 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>医学视频检测系统</title>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        #videoContainer { 
+            width: 100%; 
+            height: 500px;
+            border: 2px dashed #ccc;
+            background: url('/static/default.jpg') center/cover;
+            position: relative;
+        }
+        #uploadProgress {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        #resultVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .button {
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        #diagnosisResult {
+            font-size: 24px;
+            color: #4CAF50;
+            margin: 20px 0;
+        }
+        #downloadSection {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="videoContainer">
+            <div id="uploadProgress">视频上传处理中，请稍候...</div>
+            <img id="resultVideo" src="static/default.jpg" alt="处理结果">
+        </div>
+        
+        <button class="button" id="uploadBtn" onclick="document.getElementById('fileInput').click()">
+            选择并上传视频
+        </button>
+        <input type="file" id="fileInput" hidden accept="video/*">
+        
+        <!-- <div id="diagnosisResult"></div> -->
+        <div id="downloadSection">
+            <a class="button" id="downloadLink" download>下载处理结果视频</a>
+        </div>
+    </div>
+    <div class="container" id="fig1Div" style="display:none;">
+        <div id="fig1Root">
+            <img id="fig1Img" src="" alt="统计图表1">
+        </div>
+    </div>
+
+    <script>
+        const videoContainer = document.getElementById('videoContainer');
+        const resultVideo = document.getElementById('resultVideo');
+        const uploadProgress = document.getElementById('uploadProgress');
+        // const diagnosisResult = document.getElementById('diagnosisResult');
+        const downloadSection = document.getElementById('downloadSection');
+        const downloadLink = document.getElementById('downloadLink');
+        const uploadBtn = document.getElementById("uploadBtn");
+        const fig1Div = document.getElementById('fig1Div');
+        const fig1Img = document.getElementById('fig1Img');
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                uploadProgress.style.display = 'block';
+                const formData = new FormData();
+                formData.append('video', file);
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    uploadProgress.style.display = 'none';
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    uploadBtn.style.display = 'none';
+                    //diagnosisResult.textContent = `诊断结果：${data.diagnosis}`;
+                    playProcessedFrames(data.frames);
+                    showDownloadLink(data.video_url);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    uploadProgress.style.display = 'none';
+                    alert('处理视频时发生错误');
+                });
+            }
+        });
+
+        function playProcessedFrames(frames) {
+            let currentFrame = 0;
+            const frameInterval = 100; // 控制播放速度（毫秒）
+
+            function showNextFrame() {
+                if (currentFrame < frames.length) {
+                    resultVideo.src = `data:image/jpeg;base64,${frames[currentFrame]}`;
+                    currentFrame++;
+                    setTimeout(showNextFrame, frameInterval);
+                }
+            }
+            
+            resultVideo.style.display = 'block';
+            showNextFrame();
+        }
+
+        function showDownloadLink(url) {
+            downloadSection.style.display = 'block';
+            downloadLink.href = url;
+        }
+        /**
+         * 更新界面上进度框中的提示信息
+         * */
+        function updateProgress() {
+            const updateInterval = 100;
+            const formData = new FormData();
+            formData.append('seq', '8')
+            fetch('/getProgress', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.log('getProgress Error1!');
+                    return ;
+                }
+                console.log('updateProgess...... !!!!!!!!!!!!!!!!!');
+                uploadProgress.innerText = data.progress;
+                if (data.state != 'finished') {
+                    setTimeout(updateProgress, updateInterval);
+                    progress.style.display = 'none';
+                }                
+            }).catch(error => {
+                console.log('getProgress error2!')
+            });
+        }
+        /**
+         * 获取第一个统计图的URL
+         * */
+        function getFig1Url() {
+            const updateInterval = 100;
+            const formData = new FormData();
+            formData.append('version', 'v1.0');
+            fetch('./getFig1Url', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.log('getFig1Url Failed! No1');
+                    return ;
+                }
+                console.log('fig1: ' + data.fig1_url + '!');
+                if (data.fig1_url != '') {
+                    fig1Div.style.display = 'block';
+                    fig1Img.src = data.fig1_url;
+                } else {
+                    setTimeout(getFig1Url, updateInterval);
+                }
+            })
+            .catch (error => {
+                console.log('getFig1Url failed! No2')
+            });
+        }
+        updateProgress();
+        getFig1Url();
+    </script>
+</body>
+</html>

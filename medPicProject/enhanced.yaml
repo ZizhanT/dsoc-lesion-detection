@@ -1,0 +1,11 @@
+
+path: E:/medPicProject/img  # Root directory of your dataset
+train: train_enhanced/images  # Path to the augmented training images
+val: valid_enhanced/images   # Path to the augmented validation images
+test: valid_enhanced/images  # Path to the test images (optional)
+nc: 3                       # Number of classes
+
+names:
+  0: irregular_nodulation
+  1: irregular_surface
+  2: irregular_vascularit

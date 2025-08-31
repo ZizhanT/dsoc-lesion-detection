@@ -1,0 +1,11 @@
+#
+path: E:/medPicProject/img
+train: train_shuffled/images
+val: val_shuffled/images
+test: val_shuffled/images
+nc: 3
+# Classes
+names:
+  0: irregular_nodulation
+  1: irregular_surface
+  2: irregular vascularit
